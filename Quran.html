@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>القرآن الكريم</title>
+    <style>
+        body {
+            font-family: 'Amiri', serif;
+            direction: rtl;
+            text-align: center;
+            background-color: #111;
+            color: #0066cc;
+            padding: 10px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            padding: 20px;
+            background-color: #333;
+            border-radius: 100px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            transition: background-color 0.3s, color 0.3s;
+            position: relative;
+        }
+        h1 {
+            color: #0066cc;
+        }
+        .surahs-container, .ayahs-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 20px;
+            text-align: center;
+        }
+        .surah, .ayah {
+            background-color: #000;
+            padding: 15px;
+            border-radius: 70px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: background-color 0.3s, color 0.3s, transform 0.3s;
+        }
+        .surah:hover, .ayah:hover {
+            background-color: #111;
+            color: #0066cc;
+            transform: scale(1.05);
+        }
+        .back-button {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            cursor: pointer;
+            width: 36px;
+            height: 36px;
+            display: none;
+        }
+        audio {
+            width: 90%;
+            margin-top: 10px;
+        }
+    </style>
+    <script>
+        let currentSurahNumber = null;
+        let currentAudio = null;
+
+        async function fetchSurah() {
+            const response = await fetch(`https://api.alquran.cloud/v1/surah`);
+            const data = await response.json();
+            const surahsContainer = document.getElementById('surahsContainer');
+
+            data.data.forEach(surah => {
+                const surahDiv = document.createElement('div');
+                surahDiv.className = 'surah';
+                surahDiv.innerHTML = `<p>${surah.number}. ${surah.englishName} (${surah.name})</p>`;
+                surahDiv.addEventListener('click', async function() {
+                    if (currentSurahNumber !== surah.number) {
+                        currentSurahNumber = surah.number;
+                        await loadSurah(surah.number);
+                    }
+                    toggleSurahView(true);
+                });
+                surahsContainer.appendChild(surahDiv);
+            });
+        }
+
+        async function loadSurah(surahNumber) {
+            const response = await fetch(`https://api.alquran.cloud/v1/surah/${surahNumber}/ar.alafasy`);
+            const data = await response.json();
+            const ayahsContainer = document.getElementById('ayahsContainer');
+            ayahsContainer.innerHTML = '';
+
+            if (surahNumber !== 1 && surahNumber !== 9) {
+                const basmalaDiv = document.createElement('div');
+                basmalaDiv.className = 'ayah';
+                basmalaDiv.innerHTML = `<p dir="rtl">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</p>`;
+                ayahsContainer.appendChild(basmalaDiv);
+            }
+
+            data.data.ayahs.forEach(ayah => {
+                const ayahDiv = document.createElement('div');
+                ayahDiv.className = 'ayah';
+                ayahDiv.innerHTML = `<p dir="rtl">${ayah.text}</p>`;
+
+                const audioUrl = ayah.audio;
+                const audioElement = document.createElement('audio');
+                audioElement.controls = true;
+                audioElement.src = audioUrl;
+                audioElement.preload = 'auto';
+
+                ayahDiv.appendChild(audioElement);
+                ayahsContainer.appendChild(ayahDiv);
+
+                audioElement.addEventListener('play', function() {
+                    if (currentAudio && currentAudio !== audioElement) {
+                        currentAudio.pause();
+                    }
+                    currentAudio = audioElement;
+                });
+
+                audioElement.addEventListener('ended', function() {
+                    const nextAyahDiv = ayahDiv.nextElementSibling;
+                    if (nextAyahDiv) {
+                        const nextAudioElement = nextAyahDiv.querySelector('audio');
+                        if (nextAudioElement) {
+                            nextAudioElement.play();
+                        }
+                    }
+                });
+            });
+        }
+
+        function toggleSurahView(show) {
+            const surahsContainer = document.getElementById('surahsContainer');
+            const ayahsContainer = document.getElementById('ayahsContainer');
+            const backButton = document.querySelector('.back-button');
+            if (show) {
+                surahsContainer.style.display = 'none';
+                ayahsContainer.style.display = 'block';
+                backButton.style.display = 'block';
+            } else {
+                surahsContainer.style.display = 'grid';
+                ayahsContainer.style.display = 'none';
+                backButton.style.display = 'none';
+            }
+        }
+
+        window.onload = async function() {
+            fetchSurah();
+        };
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Amiri&display=swap" rel="stylesheet">
+</head>
+<body class="dark-theme">
+    <div class="container">
+        <h1>القرآن الكريم</h1>
+        <div id="surahsContainer" class="surahs-container"></div>
+        <div id="ayahsContainer" class="ayahs-container"></div>
+        <div class="back-button" onclick="toggleSurahView(false)">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M20 11H7.83l5.88-5.88a.996.996 0 10-1.41-1.41l-7.59 7.59c-.39.39-.39 1.02 0 1.41l7.59 7.59a.996.996 0 101.41-1.41L7.83 13H20c.55 0 1-.45 1-1s-.45-1-1-1z"/>
+            </svg>
+        </div>
+    </div>
+</body>
+</html>
